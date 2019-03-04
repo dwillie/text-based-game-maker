@@ -1,0 +1,172 @@
+<body>
+    <div id="content">
+        <div class="zone-description">
+            <h1 id="title">Test</h1>
+            <p id="description"></p>
+            <ul id="connections"></ul>
+        </div>
+
+        <span id="input">
+            <input type="text" id="commandInput" />
+            <button type="submit" onclick="executeCommand()">Go</button>
+        </span>
+    </div>
+</body>
+
+<script>
+    let world = {
+        startingZone: "The great gate",
+        zones: [
+            {
+                "name": "The great gate",
+                "description": "In front of you is an enormous iron gate, bolted into a stone wall that seems to stretch on forever. In the center of the gate is a gilded keyhole. You'll need the key to get through here...",
+                "options": [
+                    {
+                        "type": "move",
+                        "to": "The forest",
+                        "description": "To the south you can see a forest",
+                        "commands": ["go south", "walk south"]
+                    },
+                    {
+                        "type": "move",
+                        "to": "North of the gate",
+                        "description": "To the north you can smell victory",
+                        "commands": ["go north", "walk north"],
+                        "conditions": [
+                            {
+                                "type": "valueEquals",
+                                "key": "gateOpen",
+                                "value": "true"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "valueSet",
+                        "key": "gateOpen",
+                        "value": "true",
+                        "description": "You think your golden key might work with the gate",
+                        "commands": ["unlock gate"],
+                        "conditions": [{ "type": "hasItem", "name": "Golden key" }]
+                    }
+                ]
+            },
+            {
+                "name": "The forest",
+                "description": "It's a big forest.",
+                "options": [
+                    {
+                        "type": "move",
+                        "to": "The great gate",
+                        "description": "To the north you can see an enormous stone wall.",
+                        "commands": ["go north", "walk north"]
+                    },
+                    {
+                        "type": "addItem",
+                        "name": "Golden key",
+                        "description": "You can see a golden key on the ground",
+                        "commands": ["pickup key"]
+                    }
+                ]
+            },
+            {
+                "name": "North of the gate",
+                "description": "You win",
+                "options": []
+            }
+        ]
+    };
+
+    const values = {}
+    const playerInventory = []
+    const commandInput = document.getElementById("commandInput");
+    const zoneTitle = document.getElementById("title");
+    const zoneDesc = document.getElementById("description");
+    const zoneConnections = document.getElementById("connections");
+
+    let currentZone = world.startingZone;
+    displayZone(world.startingZone);
+
+    function getZoneByName(zoneName) {
+        return world.zones.filter(zone => zone.name === zoneName)[0];
+    }
+
+    function isConditionMet(condition) {
+        switch (condition.type) {
+            case "hasItem":
+                return playerInventory.indexOf(condition.name) > -1;
+            case "valueEquals":
+                return values[condition.key] === condition.value
+            default: return false;
+        }
+    }
+
+    function performOption(option) {
+        switch (option.type) {
+            case "move":
+                currentZone = option.to;
+                break;
+            case "valueSet":
+                values[option.key] = option.value;
+                break;
+            case "addItem":
+                playerInventory.push(option.name)
+                break;
+        }
+    }
+
+    function areConditionsMet(option) {
+        if (!option.conditions) { return true; }
+
+        for (let index = 0; index < option.conditions.length; index++) {
+            if (!isConditionMet(option.conditions[index])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function performCommand(command) {
+        getZoneByName(currentZone).options.forEach(option => {
+            if (areConditionsMet(option) && option.commands.indexOf(command) != -1) {
+                performOption(option);
+            }
+        });
+    }
+
+    function displayZone(zoneName) {
+        const zoneObject = getZoneByName(zoneName);
+        zoneTitle.innerHTML = zoneObject.name;
+        zoneDesc.innerHTML = zoneObject.description;
+        zoneConnections.innerHTML = "";
+        zoneObject.options.forEach(option => {
+            if (areConditionsMet(option)) {
+                zoneConnections.innerHTML += "<li>" + option.description + " (" + option.commands + ")</li>";
+            }
+        })
+    }
+
+    function getCommand() {
+        return document.getElementById("commandInput").value;
+    }
+
+    function executeCommand() {
+        const command = getCommand();
+        performCommand(command);
+        displayZone(currentZone);
+    }
+</script>
+
+<style>
+    #content {
+        width: 30em;
+        margin: auto;
+    }
+
+    #title {
+        text-align: center;
+    }
+
+    #input {
+        width: 100%;
+    }
+</style>
